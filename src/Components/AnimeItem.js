@@ -52,7 +52,7 @@ function AnimeItem() {
             return;
         }
 
-        axios.post('http://localhost:3001/api/anime', new_anime)
+        axios.post('https://web-server-snowy.vercel.app/api/anime', new_anime)
             .then(response => {
                 console.log(response.data);
             })
