@@ -36,7 +36,7 @@ function Homepage() {
             <header>
                 <div className="header">
                     <Link to="/profile" className="profile-button">
-                        Profile
+                        Watch List
                     </Link>
                 </div>
                 <div className="logo">
