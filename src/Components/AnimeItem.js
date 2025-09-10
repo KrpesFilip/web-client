@@ -1,18 +1,41 @@
-import React, { useEffect } from 'react'
+import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom'
 import styled from 'styled-components'
 import axios from 'axios';
+import { useGlobalContext } from '../context/global';
+import LoginModal from './LoginModal';
+
 
 function AnimeItem() {
+
+    const [modalOpen, setModalOpen] = useState(false);
+    const { user, logout } = useGlobalContext();
+
     const {id} = useParams()
 
     const [anime, setAnime] = React.useState({})
     const [showMore, setShowMore] = React.useState(false)
 
-    const [new_anime, setNewAnime] = React.useState({
+    const [new_anime, setNewAnime] = React.useState(() => {
+    return {
         mal_id: id,
-        status: "Planning   "
+        status: "Planning",
+        username: user ? user.username : null  // add username if logged in
+    }
     });
+
+    
+
+
+    React.useEffect(() => {
+    if (user) {
+        setNewAnime(prev => ({
+            ...prev,
+            username: user.username
+        }));
+    }
+}, [user]);
+
 
     const {
         title,
@@ -30,11 +53,55 @@ function AnimeItem() {
         rating,
         source} = anime
 
-    const getAnime = async(anime) => {
-        const response = await fetch(`https://api.jikan.moe/v4/anime/${anime}`)
-        const data = await response.json()
-        setAnime(data.data)
+    const getAnime = async (animeId) => {
+  try {
+    // Try fetching from Jikan API
+    const response = await fetch(`https://api.jikan.moe/v4/anime/${animeId}`);
+    if (!response.ok) throw new Error('API fetch failed');
+    const data = await response.json();
+    
+    setAnime(data.data);
+    console.log("Anime fetched from API:", data.data.mal_id);
+
+    // Save to cache
+    const animeToSave = {
+      mal_id: data.data.mal_id,
+      status: data.data.status || "Unknown",
+      title: data.data.title,
+      synopsis: data.data.synopsis,
+      duration: data.data.duration,
+      aired: data.data.aired?.string,
+      season: data.data.season,
+      image_url: data.data.images?.jpg.large_image_url,
+      rank: data.data.rank,
+      score: data.data.score,
+      scored_by: data.data.scored_by,
+      popularity: data.data.popularity,
+      rating: data.data.rating,
+      source: data.data.source
+    };
+
+    await axios.post("http://localhost:3001/api/anime/cache", animeToSave);
+    console.log("Anime saved to cache:", animeToSave.mal_id);
+
+  } catch (err) {
+    console.warn("API fetch failed, trying cache...", err.message);
+
+    try {
+      // Fetch from local anime_cache DB
+      const res = await axios.get(`http://localhost:3001/api/anime/cache/${animeId}`);
+      if (res.data.data) {
+        setAnime(res.data.data);
+        console.log("Anime loaded from cache:", res.data.data.mal_id);
+      } else {
+        console.error("Anime not found in cache");
+      }
+    } catch (cacheErr) {
+      console.error("Error fetching anime from cache:", cacheErr);
     }
+  }
+};
+
 
     useEffect(() => {
         getAnime(id)
@@ -47,12 +114,28 @@ function AnimeItem() {
 
     // Event handler for the button click
     const handleClick = () => {
+        
+        if (!user) {
+            // If not logged in, show modal
+            setModalOpen(true);
+            return;
+        }
+        
         if (new_anime.mal_id === undefined || new_anime.status === undefined) {
             alert('MAL ID and Status are required.');
             return;
         }
 
-        axios.post('https://web-server-production-511d.up.railway.app/api/anime', new_anime)
+        const animeToAdd = {
+        ...new_anime,
+        username: user.username
+        };
+
+        console.log("Current user:", user);
+        console.log("Username being sent:", user.username);
+        console.log("Data sent to backend:", animeToAdd);
+
+        axios.post('http://localhost:3001/api/anime', animeToAdd)
             .then(response => {
                 console.log(response.data);
             })
@@ -63,10 +146,24 @@ function AnimeItem() {
     
     return (
         <AnimeItemStyled>
+
+            <LoginModal isOpen={modalOpen} onClose={() => setModalOpen(false)} />
+
+
             <div className="header">
                 <Link to="/profile" className="profile-button">
                     Profile
                 </Link>
+
+                {user ? (
+                    <Link to="#" className="profile-button" onClick={logout}>
+                        Logout ({user.username})
+                    </Link>
+                ) : (
+                    <Link to="#" className="profile-button" onClick={() => setModalOpen(true)}>
+                        Login / Register
+                    </Link>
+                )}
             </div>
             <div className="back">
                 <Link to="/">

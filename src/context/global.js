@@ -37,7 +37,14 @@ export const GlobalContextProvider = ({children}) => {
         isSearch: false,
         searchResults: [],
         loading: false,
+        user: null,
     }
+
+////////////
+    
+
+
+////////////
 
     const [state, dispatch] = useReducer(reducer, initialState);
     const [search, setSearch] = React.useState('')
@@ -64,7 +71,9 @@ export const GlobalContextProvider = ({children}) => {
         dispatch({type: LOADING})
         const response = await fetch(`${baseUrl}/top/anime?filter=bypopularity`);
         const data = await response.json();
+        console.log("First anime loaded:", data.data[0]);
         dispatch({type: GET_POPULAR_ANIME, payload: data.data})
+        
     }
 
     const getUpcomingAnime = async () => {
@@ -88,6 +97,43 @@ export const GlobalContextProvider = ({children}) => {
         dispatch({type: SEARCH, payload: data.data})
     }
 
+////////////////////////////
+const [token, setToken] = React.useState(() => {
+    return localStorage.getItem('token') || null;
+});
+
+// manage user state
+const [user, setUser] = React.useState(() => {
+    const token = localStorage.getItem('token');
+    if(token){
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        return payload;
+    }
+    return null;
+});
+
+const login = (token) => {
+    localStorage.setItem('token', token);
+    setToken(token);
+
+    const payload = JSON.parse(atob(token.split('.')[1])); // decode JWT
+    setUser(payload); // payload should have username, role
+}
+
+const logout = () => {
+    localStorage.removeItem('token');
+    setUser(null);
+    setToken(null);
+}
+
+
+
+
+
+
+
+
+//////////////////////////////
     React.useEffect(() => {
         getPopularAnime();
     }, [])
@@ -102,6 +148,10 @@ export const GlobalContextProvider = ({children}) => {
             getPopularAnime,
             getUpcomingAnime,
             getAiringAnime,
+            user,
+            token,       
+            login,      
+            logout
         }}>
             {children}
         </GlobalContext.Provider>

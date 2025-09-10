@@ -1,4 +1,4 @@
-import React from 'react'
+
 import Popular from './Popular';
 import Upcoming from './Upcoming';
 import Airing from './Airing';
@@ -6,6 +6,8 @@ import Airing from './Airing';
 import { Link } from 'react-router-dom'
 import { useGlobalContext } from '../context/global';
 import styled from 'styled-components'
+import React, { useState } from 'react';
+import LoginModal from './LoginModal';
 
 function Homepage() {
     const {
@@ -18,6 +20,9 @@ function Homepage() {
     } = useGlobalContext()
 
     const [rendered, setRendered] = React.useState('popular')
+    const [modalOpen, setModalOpen] = useState(false);
+    const { user, logout } = useGlobalContext(); // if using Option 1
+
 
     const switchComponent = () => {
         switch(rendered){
@@ -33,11 +38,46 @@ function Homepage() {
     }
     return (
         <HomepageStyled>
+
+{/* Login Modal */}
+            <LoginModal isOpen={modalOpen} onClose={() => setModalOpen(false)} />
+
             <header>
                 <div className="header">
-                    <Link to="/profile" className="profile-button">
-                        Watch List
+                    {user?.role === 'admin' && (
+                        <Link
+                            to="/admin"
+                            className="profile-button"
+                        >
+                            Admin Panel
+                        </Link>
+                    )}
+                    
+                    <Link
+                        to={user ? "/profile" : "#"} // only navigate if logged in
+                        className="profile-button"
+                        onClick={(e) => {
+                            if (!user) {
+                                e.preventDefault(); // prevent navigation
+                                setModalOpen(true); // open login modal
+                            }
+                        }}
+                    >
+                        WatchList
                     </Link>
+                    {user ? (
+                        <Link to="#" className="profile-button" onClick={logout}>
+                            Logout ({user.username})
+                        </Link>
+                    ) : (
+                        <Link to="#" className="profile-button" onClick={() => setModalOpen(true)}>
+                            Login / Register
+                        </Link>
+                    )}
+
+            
+                    
+        
                 </div>
                 <div className="logo">
                     <h1>
@@ -97,6 +137,20 @@ const HomepageStyled = styled.div`
     }
 
     .profile-button:hover {
+        background-color: #0056b3;
+    }
+
+    .login-button {
+        display: inline-block;
+        padding: 10px 20px;
+        background-color: #007bff;
+        color: white;
+        text-decoration: none;
+        border-radius: 5px;
+        transition: background-color 0.3s;
+    }
+
+    .login-button:hover {
         background-color: #0056b3;
     }
 
